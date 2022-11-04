@@ -1,0 +1,8 @@
+# 無視する
+.*
+!.gitignore
+
+*.DS_Store
+*.pyc
+.git/*
+*.ipynb
