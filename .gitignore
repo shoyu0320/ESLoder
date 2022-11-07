@@ -1,6 +1,7 @@
 # 無視する
 .*
 !.gitignore
+!.github
 
 *.DS_Store
 *.pyc
