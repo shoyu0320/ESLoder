@@ -142,6 +142,7 @@ class ExcelSheetModel(models.Model):
             CellRangeModel.\
                 create_model(self, cell_range=ranges, idx=idx)
 
+# TODO cell range　をA1タイプにして行列それぞれに入力する術を考えること
 class CellRangeModel(models.Model):
     excel_sheet: _F = models.ForeignKey(
         ExcelSheetModel,
