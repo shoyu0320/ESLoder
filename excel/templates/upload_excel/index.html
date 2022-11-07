@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>エクセルシート画面</title>
+</head>
+
+<body>
+    <h1>
+        エクセルシート選択画面
+    </h1>
+    <div class="user-menu">
+        <h2>
+            <a href="{% url 'upload' %}">アップロード</a><br>
+            <a href="{% url 'update' %}">更新</a>
+        </h2>
+    </div>
+    {% endif %}
+</body>
+
+</html>
