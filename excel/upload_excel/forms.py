@@ -5,7 +5,8 @@ from upload_excel.models import ColumnModel, ContentModel, RowModel
 
 
 class UploadForm(forms.Form):
-    file = forms.FileField()
+    file = forms.FileField(
+        widget=forms.ClearableFileInput(attrs={'multiple': True}))
 
 
 class ColumnForm(forms.ModelForm):

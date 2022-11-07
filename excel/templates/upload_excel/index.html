@@ -12,11 +12,19 @@
     </h1>
     <div class="user-menu">
         <h2>
-            <a href="{% url 'upload' %}">アップロード</a><br>
-            <a href="{% url 'update' %}">更新</a>
+            {% if display is null %}
+            <form action="" method="post" name="upload" enctype="multipart/form-data">
+                {{ upload.file }}<br>
+                {% csrf_token %}
+                <button name="btn_submit" type="file">アップロード</button>
+            </form>
+            {% else %}
+            {% for d in display %}
+            {{ d }}
+            {% endfor %}
+            {% endif %}
         </h2>
     </div>
-    {% endif %}
 </body>
 
 </html>
