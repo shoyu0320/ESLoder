@@ -125,6 +125,7 @@ class CellRangeModel(models.Model):
     excel_sheet: _F = models.ForeignKey(
         ExcelSheetModel,
         on_delete=models.CASCADE,
+        related_name="cell_ranges"
     )
     sheet_create_time: _F = models.DateTimeField(
         verbose_name="セル範囲作成日時",
@@ -134,7 +135,6 @@ class CellRangeModel(models.Model):
         help_text=(
             "Define when a sheet has created."
         ),
-        related_name="cell_ranges"
     )
     sheet_update_time: _F = models.DateTimeField(
         verbose_name="セル範囲作成日時",
