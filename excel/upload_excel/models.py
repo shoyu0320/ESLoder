@@ -2,6 +2,7 @@ import uuid
 from typing import Any, List, TypeVar
 
 import openpyxl
+from django.core.files.uploadedfile import InMemoryUploadedFile
 from django.db import models
 from django.http import HttpRequest
 from django.utils import timezone
@@ -96,6 +97,22 @@ class ExcelSheetModel(models.Model):
     )
     class Meta:
         db_table: str = "excel_sheet"
+
+    @classmethod
+    def is_valid_request(self,
+                         request: HttpRequest,
+                         file_key: str = "file"
+                         ) -> None:
+        is_valid: bool = file_key in request.FILES
+        if not is_valid:
+            raise KeyError()
+
+    @classmethod
+    def get_binary_data(cls,
+                        request: HttpRequest,
+                        file_key: str = "file") -> str:
+        file_data: List[InMemoryUploadedFile] = request.FILES[file_key]
+        return file_data.file
 
     @classmethod
     def create_model(cls,
