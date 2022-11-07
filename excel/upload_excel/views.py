@@ -27,15 +27,15 @@ class UploadExcelView(TemplateView):
         cell_ranges: _QS = excel_sheet_model.cell_ranges.all()
         output: List[str] = []
         for merged_cell in cell_ranges:
-            cols_start = cell_ranges.columns.cell_start
-            cols_end = cell_ranges.columns.cell_end
-            rows_start = cell_ranges.rows.cell_start
-            rows_end = cell_ranges.rows.cell_end
-            content = cell_ranges.content.cell_content
-            output += [content]
+            cols_start = merged_cell.columns.cell_start
+            cols_end = merged_cell.columns.cell_end
+            rows_start = merged_cell.rows.cell_start
+            rows_end = merged_cell.rows.cell_end
+            content = merged_cell.content.cell_content
+            output += [(cols_start, cols_end, rows_start, rows_end, content)]
         return output
 
-    def post(self, request, *args, **kwargs):
+    def post(self, request: HttpRequest, *args, **kwargs):
         context: dict[str, Any] = self._get_basic_context()
         if request.method == "POST":
             # openpyxl はバイナリファイルを指定してあげることもできる。許せない。
@@ -51,7 +51,8 @@ class UploadExcelView(TemplateView):
             *args: Tuple[Any, ...],
             **kwargs: dict[str, Any]) -> HttpResponse:
         context: dict[str, Any] = self._get_basic_context()
-        context["upload_form"] = self.form_class()
+        context["upload"] = self.form_class()
+        context["display"] = None
         return render(request, self.template_name, context=context)
 
 
