@@ -48,7 +48,7 @@ class ExcelSheetModel(models.Model):
         default=timezone.now,
         help_text=(
             "Define when a sheet has created."
-        )
+        ),
     )
     sheet_update_time: _F = models.DateTimeField(
         verbose_name="シート作成日時",
@@ -133,7 +133,8 @@ class CellRangeModel(models.Model):
         default=timezone.now,
         help_text=(
             "Define when a sheet has created."
-        )
+        ),
+        related_name="cell_ranges"
     )
     sheet_update_time: _F = models.DateTimeField(
         verbose_name="セル範囲作成日時",
@@ -196,6 +197,7 @@ class ColumnModel(models.Model):
     cell_range: _F = models.ForeignKey(
         CellRangeModel,
         on_delete=models.CASCADE,
+        related_name="columns"
     )
     cell_start: _F = models.CharField(
         verbose_name="セルのカラム初期位置",
@@ -232,6 +234,7 @@ class RowModel(models.Model):
     cell_range: _F = models.ForeignKey(
         CellRangeModel,
         on_delete=models.CASCADE,
+        related_name="rows"
     )
     cell_start: _F = models.CharField(
         verbose_name="セルのロー初期位置",
@@ -268,6 +271,7 @@ class ContentModel(models.Model):
     cell_range: _F = models.ForeignKey(
         CellRangeModel,
         on_delete=models.CASCADE,
+        related_name="content"
     )
     cell_content: _F = models.TextField(
         verbose_name="セルの内容",
