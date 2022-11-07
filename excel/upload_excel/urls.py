@@ -1,9 +1,7 @@
 from django.urls import path
 from upload_excel import views
 
-from excel.upload_excel import views
-
-app_name = "SpecSheet"
+app_name = "excel"
 urlpatterns = [
     path(
         "user=?<str:user_id>?",
