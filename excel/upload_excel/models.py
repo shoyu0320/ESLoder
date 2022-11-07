@@ -25,7 +25,9 @@ class ESTemplateNamesModel(models.Model):
         editable=True,
         max_length=20,
     )
-    init_choices: List[str] = ["profile", "project"]
+    init_choices: List[str] = [
+        (1, "profile"), (2, "project")
+    ]
     class Meta:
         db_table: str = "template_names"
 
@@ -35,9 +37,16 @@ class ESTemplateNamesModel(models.Model):
         template_name_model.save(force_insert=True)
 
     @classmethod
-    def get_template_names(cls, *args, **kwargs) -> List[str]:
+    def _get_template_names(cls, *args, **kwargs) -> List[str]:
         output: List[str] = [] + cls.init_choices
-        output += list(cls.objects.values_list("name"))
+        count: int = 3
+        _choices: List[str] = [c for _, c in cls.init_choices]
+        for v in ESTemplateNamesModel.objects.all().values_list():
+            if v in _choices:
+                continue
+            output += [(count, v)]
+            count += 1
+            _choices += [v]
         return output
 
 class ExcelSheetModel(models.Model):
@@ -83,7 +92,7 @@ class ExcelSheetModel(models.Model):
             "Even before you don't generate your custom template, "
             "you can use two template types of 'profile' and 'project'"
         ),
-        choices=ESTemplateNamesModel.get_template_names
+        choices=ESTemplateNamesModel._get_template_names()
     )
     class Meta:
         db_table: str = "excel_sheet"
