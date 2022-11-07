@@ -6,10 +6,8 @@ from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse_lazy
 from django.views.generic import TemplateView
-
-from excel.upload_excel.forms import (ColumnForm, ContentForm, RowForm,
-                                      UploadForm)
-from excel.upload_excel.models import ExcelSheetModel
+from upload_excel.forms import ColumnForm, ContentForm, RowForm, UploadForm
+from upload_excel.models import ExcelSheetModel
 
 _QS = TypeVar("_QS", bound=QuerySet)
 

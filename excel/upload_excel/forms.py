@@ -1,8 +1,7 @@
 from typing import Tuple
 
 from django import forms
-
-from excel.upload_excel.models import ColumnModel, ContentModel, RowModel
+from upload_excel.models import ColumnModel, ContentModel, RowModel
 
 
 class UploadForm(forms.Form):
