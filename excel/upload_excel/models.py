@@ -176,14 +176,17 @@ class CellRangeModel(models.Model):
 
         crm: _CRM = cls(excel_sheet=excel_sheet,
                         cell_range_id_by_order=idx)
+        crm.save(force_insert=True)
+        cols: List[str] = list(cell_range.cols)
         clm: ColumnModel = ColumnModel(cell_range=crm,
-                                      cell_start=cell_range.cols[0],
-                                      cell_end=cell_range.cols[-1],
+                                      cell_start=cols[0],
+                                      cell_end=cols[-1],
                                       cell_range_id_by_order=idx)
         clm.save(force_insert=True)
+        rows: List[str] = list(cell_range.rows)
         rwm: RowModel = RowModel(cell_range=crm,
-                                cell_start=cell_range.rows[0],
-                                cell_end=cell_range.rows[-1],
+                                cell_start=rows[0],
+                                cell_end=rows[-1],
                                 cell_range_id_by_order=idx)
         rwm.save(force_insert=True)
         ctm: ContentModel = ContentModel(cell_range=crm,
