@@ -93,14 +93,12 @@ class ExcelSheetModel(models.Model):
                      request: HttpRequest,
                      file_key: str = "file",
                      sheet_type: str = "profile") -> _ESM:
-        uploaded_xlsx: List[Any] = request.FILES.get(file_key, None)
-        if uploaded_xlsx is None:
-            raise ValueError()
-        else:
-            binary: str = getattr(uploaded_xlsx, file_key)
+        cls.is_valid_request(request, file_key)
+        binary: str = cls.get_binary_data(request, file_key)
 
         workbook: Workbook = openpyxl.load_workbook(binary)
         excel_sheet_model: _ESM = cls(sheet_type=sheet_type)
+        excel_sheet_model.save(force_insert=True)
 
         excel_sheet_model.create_cell_ranges(workbook)
 
@@ -111,15 +109,12 @@ class ExcelSheetModel(models.Model):
         worksheet: Worksheet = workbook.active
 
         cell_ranges: List[CellRange] = worksheet.merged_cells.ranges
-        cell_range_model: _CRM
         ranges: CellRange
         idx: int
 
         for idx, ranges in enumerate(cell_ranges):
-            cell_range_model = CellRangeModel.create_model(self,
-                                                           cell_range=ranges,
-                                                           idx=idx)
-            cell_range_model.save(force_insert=True)
+            CellRangeModel.\
+                create_model(self, cell_range=ranges, idx=idx)
 
 class CellRangeModel(models.Model):
     excel_sheet: _F = models.ForeignKey(
