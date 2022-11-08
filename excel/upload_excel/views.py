@@ -27,11 +27,16 @@ class UploadExcelView(TemplateView):
         cell_ranges: _QS = excel_sheet_model.cell_ranges.all()
         output: List[str] = []
         for merged_cell in cell_ranges:
-            cols_start = merged_cell.columns.cell_start
-            cols_end = merged_cell.columns.cell_end
-            rows_start = merged_cell.rows.cell_start
-            rows_end = merged_cell.rows.cell_end
-            content = merged_cell.content.cell_content
+            column = merged_cell.columns.filter(cell_range=merged_cell).all()
+            cols_start = column.last().cell_start
+            cols_end = column.last().cell_end
+
+            row = merged_cell.rows.filter(cell_range=merged_cell).all()
+            rows_start = row.last().cell_start
+            rows_end = row.last().cell_end
+
+            content = merged_cell.content.filter(cell_range=merged_cell).all()
+            content = content.last().cell_content
             output += [(cols_start, cols_end, rows_start, rows_end, content)]
         return output
 
@@ -41,11 +46,10 @@ class UploadExcelView(TemplateView):
             # openpyxl はバイナリファイルを指定してあげることもできる。許せない。
             # 参考: https://stackoverflow.com/questions/20635778/using-openpyxl-to-read-file-from-memory
             esm: ExcelSheetModel = ExcelSheetModel.create_model(request, file_key="file", sheet_type="profile")
-            esm.save(force_insert=True)
             context["display"] = {}
             context["display"] = self._make_display_context(esm)
 
-        return render(request, self.uploaded_template, context=context)
+        return render(request, self.template_name, context=context)
 
     def get(self, request: HttpRequest,
             *args: Tuple[Any, ...],
