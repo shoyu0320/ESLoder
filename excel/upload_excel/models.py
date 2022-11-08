@@ -314,7 +314,7 @@ class ColumnModel(models.Model):
                      cell_range: CellRange,
                      idx: int = 0) -> _CM:
         start, end = get_bound_items(cell_range, bound_type="alphabet")
-        cell_size: int = cell_range.max_col - cell_range.min_col
+        cell_size: int = cell_range.max_col - cell_range.min_col + 1
         column: _CM = cls(cell_range=cell_range_model,
                          cell_start=start,
                          cell_end=end,
@@ -373,7 +373,7 @@ class RowModel(models.Model):
                      cell_range: CellRange,
                      idx: int = 0) -> _RM:
         start, end = get_bound_items(cell_range, bound_type="digit")
-        cell_size: int = cell_range.max_row - cell_range.min_row
+        cell_size: int = cell_range.max_row - cell_range.min_row + 1
         row: _RM = cls(cell_range=cell_range_model,
                        cell_start=start,
                        cell_end=end,
