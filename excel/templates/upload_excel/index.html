@@ -19,9 +19,15 @@
                 <button name="btn_submit" type="file">アップロード</button>
             </form>
             {% else %}
-            {% for d in display %}
-            {{ d }}
-            {% endfor %}
+            <table>
+                {% for coord, merged_cells in display.items %}
+                <tr>
+                    {% for merged_cell in merged_cells %}
+                    <td colspan=merged_cell.col_size rowspan=merged_cell.row_size>{{ merged_cell.content }}</td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </table>
             {% endif %}
         </h2>
     </div>

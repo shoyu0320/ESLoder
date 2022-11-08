@@ -25,19 +25,30 @@ class UploadExcelView(TemplateView):
     def _make_display_context(self,
                               excel_sheet_model: ExcelSheetModel) -> List[str]:
         cell_ranges: _QS = excel_sheet_model.cell_ranges.all()
-        output: List[str] = []
+        output: dict[int, List[dict[str, str]]] = {}
+        _out: dict[str, str]
         for merged_cell in cell_ranges:
-            column = merged_cell.columns.filter(cell_range=merged_cell).all()
-            cols_start = column.last().cell_start
-            cols_end = column.last().cell_end
+            _out = {}
 
-            row = merged_cell.rows.filter(cell_range=merged_cell).all()
-            rows_start = row.last().cell_start
-            rows_end = row.last().cell_end
+            column = merged_cell.columns.filter(cell_range=merged_cell).all().last()
+            _out["col_start"] = column.cell_start
+            _out["col_end"] = column.cell_end
+            _out["col_size"] = column.cell_size
 
-            content = merged_cell.content.filter(cell_range=merged_cell).all()
-            content = content.last().cell_content
-            output += [(cols_start, cols_end, rows_start, rows_end, content)]
+            row = merged_cell.rows.filter(cell_range=merged_cell).all().last()
+            _out["row_start"] = row.cell_start
+            _out["row_end"] = row.cell_end
+            _out["row_size"] = row.cell_size
+
+            content = merged_cell.content.filter(cell_range=merged_cell).all().last()
+            _out["content"] = content.cell_content
+
+            coord = int(_out["row_start"])
+            if coord not in output:
+                for c in range(1, coord + 1):
+                    if c not in output:
+                        output[c] = []
+            output[coord] += [_out]
         return output
 
     def post(self, request: HttpRequest, *args, **kwargs):
