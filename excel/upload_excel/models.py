@@ -1,7 +1,9 @@
 import re
+import string
 import uuid
-from typing import Any, Callable, List, Optional, Tuple, TypeVar
+from typing import Any, Callable, List, Optional, Tuple, TypeVar, Union
 
+import numpy as np
 import openpyxl
 from django.core.files.uploadedfile import InMemoryUploadedFile
 from django.db import models
@@ -12,6 +14,8 @@ from openpyxl import Workbook
 from openpyxl.cell.cell import Cell
 from openpyxl.worksheet.cell_range import CellRange
 from openpyxl.worksheet.worksheet import Worksheet
+from upload_excel.utils.cell_tree import CellNode, CellTree
+from upload_excel.utils.sort import A2ZListMaker
 
 _T = TypeVar("_T", bound=models.Model)
 _F = TypeVar("_F", bound=models.Field)
@@ -57,6 +61,14 @@ def get_cell_value(cell: Cell, concat_size: int = 0) -> Optional[str]:
     if val is not None:
         if concat_size > 0:
             output += br_pattern
+        output += str(val)
+    return output
+
+
+def get_text(cell):
+    val = cell.value
+    output = ""
+    if val is not None:
         output += str(val)
     return output
 
@@ -144,6 +156,22 @@ class ExcelSheetModel(models.Model):
         ),
         choices=ESTemplateNamesModel._get_template_names()
     )
+    col_size: _F = models.PositiveIntegerField(
+        verbose_name="シートのカラムサイズ",
+        blank=False,
+        null=False,
+        default=1,
+        editable=True,
+    )
+    row_size: _F = models.PositiveIntegerField(
+        verbose_name="シートのローサイズ",
+        blank=False,
+        null=False,
+        default=1,
+        editable=True,
+    )
+    excel_matrix: np.ndarray
+    child_rate: float = 0.9
     class Meta:
         db_table: str = "excel_sheet"
 
@@ -172,24 +200,74 @@ class ExcelSheetModel(models.Model):
         binary: str = cls.get_binary_data(request, file_key)
 
         workbook: Workbook = openpyxl.load_workbook(binary)
-        excel_sheet_model: _ESM = cls(sheet_type=sheet_type)
-        excel_sheet_model.save(force_insert=True)
-
-        excel_sheet_model.create_cell_ranges(workbook)
-
-        return excel_sheet_model
-
-    def create_cell_ranges(self, workbook: Workbook) -> None:
-
         worksheet: Worksheet = workbook.active
 
-        cell_ranges: List[CellRange] = worksheet.merged_cells.ranges
+        excel_sheet_model: _ESM = cls(sheet_type=sheet_type,
+                                      col_size=worksheet.max_column,
+                                      row_size=worksheet.max_row)
+        excel_sheet_model.excel_matrix =\
+            np.zeros((100, worksheet.max_column))
+        print(excel_sheet_model.excel_matrix.shape)
+        excel_sheet_model.save(force_update=True)
+
+        excel_sheet_model.create_cell_ranges(worksheet)
+
+        workbook.close()
+        return excel_sheet_model
+
+    def create_cell_ranges(self, worksheet: Worksheet) -> None:
+        # TODO メソッドを細かく分ける
+        list_maker = A2ZListMaker(max_size=worksheet.max_column, init=string.ascii_uppercase)
+        list_maker.create()
+
+        cell_ranges: List[CellRange] = worksheet.merged_cells
+        excel_array = np.zeros((worksheet.max_row, worksheet.max_column))
         ranges: CellRange
         idx: int
 
+        coord_list: List[str] = []
         for idx, ranges in enumerate(cell_ranges):
+            coords = ranges.coord.split(":")
+
+            out = []
+            for c in coords:
+                out += getters["alphabet"](c)
+                out += getters["digit"](c)
+            coord_list.append(out)
+
+        out_map = {}
+        for n, out in enumerate(coord_list):
+            cs, rs, ce, re = out
+            txt = ""
+            for cells in worksheet[cs+rs+":"+ce+re]:
+                for cell in cells:
+                    txt += get_text(cell)
+
+            if len(txt) < 1:
+                continue
+
+            cs = list_maker.values.index(cs)
+            ce = list_maker.values.index(ce) + 1
+            rs = int(rs)
+            re = int(re) + 1
+
+            excel_array[rs:re, cs:ce][excel_array[rs:re, cs:ce] == 0] = n + 1
+            out_map[n + 1] = {
+                "text": txt, "ranges": [(cs, ce), (rs, re)],
+                "merged_cell": cell_ranges.ranges[n]
+            }
+
+        excel_array[excel_array == 0] = None
+
+        tree = CellTree.create_tree(excel_array, child_rate=self.child_rate)
+
+        for idx, outs in out_map.items():
             CellRangeModel.\
-                create_model(self, worksheet=worksheet, cell_range=ranges, idx=idx)
+                create_model(self,
+                             worksheet=worksheet,
+                             cell_range=outs["merged_cell"],
+                             idx=idx,
+                             node=tree.tree[idx])
 
 # TODO cell range　をA1タイプにして行列それぞれに入力する術を考えること
 class CellRangeModel(models.Model):
@@ -236,6 +314,27 @@ class CellRangeModel(models.Model):
             "An ID based on merged order is assigned by cell range."
         )
     )
+    effective_cell_width: _F = models.IntegerField(
+        verbose_name="有効セル幅",
+        blank=False,
+        null=False,
+        default=1,
+        editable=True,
+    )
+    effective_cell_height: _F = models.IntegerField(
+        verbose_name="有効セル高さ",
+        blank=False,
+        null=False,
+        default=1,
+        editable=True,
+    )
+    has_parent: _F = models.BooleanField(
+        verbose_name="親の有無",
+        blank=False,
+        null=False,
+        default=True,
+        editable=True,
+    )
     class Meta:
         db_table: str = "cell_range"
 
@@ -244,13 +343,17 @@ class CellRangeModel(models.Model):
                      excel_sheet: _ESM,
                      worksheet: Worksheet,
                      cell_range: CellRange,
-                     idx: int = 0) -> _CRM:
+                     idx: int = 0,
+                     node: CellNode = CellNode()) -> _CRM:
 
         # When creating a child model,
         # an inputting parent model which has been defined
         # as foreign key model at child must be saved before.
         crm: _CRM = cls(excel_sheet=excel_sheet,
-                        cell_range_id_by_order=idx)
+                        cell_range_id_by_order=idx,
+                        effective_cell_width=node.width,
+                        effective_cell_height=node.height,
+                        has_parent=node.has_parent())
         crm.save(force_insert=True)
         ColumnModel.create_model(cell_range_model=crm,
                                  cell_range=cell_range,
