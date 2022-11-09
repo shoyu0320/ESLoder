@@ -1,5 +1,7 @@
 # 無視する
 .*
+*test.html
+*image.png
 !.gitignore
 !.github
 
