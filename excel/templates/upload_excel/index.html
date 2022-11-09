@@ -4,6 +4,30 @@
 <head>
     <meta charset="UTF-8">
     <title>エクセルシート画面</title>
+    <style>
+        .border_line_1 {
+            background-color: #ffe4e1;
+        }
+
+        .border_line_2 {
+            font-size: 8px;
+        }
+
+        table {
+            width: 75%;
+            border: 1px #a47eee solid;
+        }
+
+        td {
+            width: 5%;
+            border: 1px #da84ac solid;
+        }
+
+        tr {
+            width: 5%;
+            border: 1px
+        }
+    </style>
 </head>
 
 <body>
@@ -20,13 +44,24 @@
             </form>
             {% else %}
             <table>
-                {% for coord, merged_cells in display.items %}
-                <tr>
-                    {% for merged_cell in merged_cells %}
-                    <td colspan=merged_cell.col_size rowspan=merged_cell.row_size>{{ merged_cell.content }}</td>
+                <table>
+                    {% for coord, merged_cells in display.items %}
+                    <tr class="border_line_2">
+                        {% for merged_cell in merged_cells %}
+                        {% if not merged_cell.merged_cell.has_parent %}
+                    </tr>
+                </table>
+                <table>
+                    <tr class="border_line_2">
+                        {% endif %}
+                        <td colspan="{{ merged_cell.merged_cell.effective_cell_width }}"
+                            rowspan="{{ merged_cell.merged_cell.effective_cell_height }}">
+                            {{ merged_cell.content.cell_content | linebreaksbr }}
+                        </td>
+                        {% endfor %}
+                    </tr>
                     {% endfor %}
-                </tr>
-                {% endfor %}
+                </table>
             </table>
             {% endif %}
         </h2>
