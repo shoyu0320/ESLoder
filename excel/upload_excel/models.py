@@ -211,7 +211,6 @@ class ExcelSheetModel(models.Model):
                                       row_size=worksheet.max_row)
         excel_sheet_model.excel_matrix =\
             np.zeros((100, worksheet.max_column))
-        print(excel_sheet_model.excel_matrix.shape)
         excel_sheet_model.save(force_update=True)
 
         excel_sheet_model.create_cell_ranges(worksheet)
@@ -240,6 +239,12 @@ class ExcelSheetModel(models.Model):
             coord_list.append(out)
 
         out_map = {}
+        rect: dict[str, int] = {
+            "upper_left": 10000,
+            "upper_right": 0,
+            "lower_left": 10000,
+            "lower_right": 0
+        }
         for n, out in enumerate(coord_list):
             cs, rs, ce, re = out
             txt = ""
@@ -247,29 +252,49 @@ class ExcelSheetModel(models.Model):
                 for cell in cells:
                     txt += get_text(cell)
 
+            if len(txt) < 1:
+                continue
+
             cs = list_maker.values.index(cs)
             ce = list_maker.values.index(ce) + 1
             rs = int(rs) - 1
             re = int(re)
 
+            rect["upper_left"] = min([rect["upper_left"], rs])
+            rect["upper_right"] = max([rect["upper_right"], re])
+            rect["lower_left"] = min([rect["lower_left"], cs])
+            rect["lower_right"] = max([rect["lower_right"], ce])
+
             # TODO null部分を縦1x横上に合わせて最大の長方形として全て定義し直す。値は空。
-            excel_array[rs:re, cs:ce][excel_array[rs:re, cs:ce] == 0] = n + 1
+            array_mask = excel_array[rs:re, cs:ce] == 0
+            excel_array[rs:re, cs:ce][array_mask] = n + 1
             out_map[n + 1] = {
                 "text": txt, "ranges": [(cs, ce), (rs, re)],
                 "merged_cell": cell_ranges.ranges[n]
             }
-        excel_array[excel_array == 0] = None
-        count = np.nanmax(excel_array) + 1
+
+        excel_mask = np.ones_like(excel_array, dtype=bool)
+        excel_mask[rect["upper_left"]:rect["upper_right"], rect["lower_left"]:rect["lower_right"]] = False
+        excel_array[excel_mask] = None
+        count = int(np.nanmax(excel_array)) + 1
 
         for row_idx, row in enumerate(excel_array):
             width_list = []
             null_row = row == 0
-            shift_null = np.r_[np.ones((1, ), dtype=bool), null_row[:-1]]
+            if not np.any(null_row):
+                continue
+
+            if null_row[0]:
+                init = np.ones
+            else:
+                init = np.zeros
+
+            shift_null = np.r_[init((1, ), dtype=bool), null_row[:-1]]
 
             start_points = (null_row & ~shift_null).nonzero()[0]
             end_points = (~null_row & shift_null).nonzero()[0]
 
-            if row[0]:
+            if null_row[0]:
                 start_points = np.r_[np.array([0]), start_points]
 
             if len(start_points) > len(end_points):
@@ -284,8 +309,12 @@ class ExcelSheetModel(models.Model):
                 end = width_list[2 * i + 1]
 
                 if end is not None:
+                    if np.any(excel_array[row_idx, start:end] > 0):
+                        raise IndexError()
                     excel_array[row_idx, start:end] = count
                 else:
+                    if np.any(excel_array[row_idx, start:] > 0):
+                        raise IndexError()
                     excel_array[row_idx, start:] = count
 
                 if end is None:
@@ -293,7 +322,6 @@ class ExcelSheetModel(models.Model):
 
                 start_cell = list_maker.values[start] + str(row_idx + 1)
                 end_cell = list_maker.values[end - 1] + str(row_idx + 1)
-                print(start_cell, end_cell)
                 merged_cell = start_cell + ":" + end_cell
                 merged_cell = CellRange(range_string=merged_cell)
 
@@ -302,6 +330,11 @@ class ExcelSheetModel(models.Model):
                     "merged_cell": merged_cell
                 }
                 count += 1
+
+        if np.nansum(excel_array == 0) > 0:
+            raise ValueError(
+                "No Zero must be included, "
+                f"but there is {np.nansum(excel_array == 0)} zeros in 'excel_array'")
 
         cell_content: dict[int, str] = {
             idx: contents["text"] for idx, contents in out_map.items()
