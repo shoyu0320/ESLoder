@@ -202,7 +202,8 @@ class ExcelSheetModel(models.Model):
         workbook: Workbook = openpyxl.load_workbook(binary)
         worksheet: Worksheet = workbook.active
 
-        excel_sheet_model: _ESM = cls(sheet_type=sheet_type,
+        excel_sheet_model: _ESM = cls(sheet_id=uuid.uuid4(),
+                                      sheet_type=sheet_type,
                                       col_size=worksheet.max_column,
                                       row_size=worksheet.max_row)
         excel_sheet_model.excel_matrix =\
