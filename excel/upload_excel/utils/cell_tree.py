@@ -225,9 +225,9 @@ class CellNode:
 
     def get_edge_cells(self, array, pad = None, use_dim: int = 0, idx: Optional[int] = None):
         frame = self.create_idx_specified_array(array, idx)
-        if (np.sum(frame) == 0) and (idx > 0):
+        if (np.sum(frame) == 0) and (idx > 0 if idx is not None else idx is not None):
             raise ValueError(
-                "One True flag should be exist at least in an frame array, "
+                "One True flag should be exist at least in a frame array, "
                 f"but no {idx} is included in the array."
             )
 
@@ -315,8 +315,7 @@ class CellTree:
                 self.tree[child.idx].add_parent(node, use_dim=use_dim)
 
     def make_graph(self, cell_content: dict[int, str] = {}) -> None:
-        idx_unique = np.unique(
-            self.excel_array.astype(int)).tolist()
-        self.make_nodes(idx_unique, cell_content)
+        idx_unique = np.unique(self.excel_array.astype(int))
+        self.make_nodes(idx_unique.tolist(), cell_content)
         self.make_edges(use_dim=0)
         self.make_edges(use_dim=1)
