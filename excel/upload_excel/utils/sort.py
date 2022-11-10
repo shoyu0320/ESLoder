@@ -126,7 +126,8 @@ class AbstractListMaker:
             f"\r進捗度|{bar}:{self.percent_progress:.1f}%  "
             f"残時間|{remain_day:.0f}日{remain_hr:.0f}時間{remain_min:.0f}分{abs(remain_sec):.0f}秒     "
         )
-        print(text, end="")
+        if self.assert_level != "none":
+            print(text, end="")
 
     def __contains__(self, val: str) -> bool:
         return val in self.values
