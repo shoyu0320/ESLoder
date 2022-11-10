@@ -92,14 +92,14 @@ class UploadExcelView(TemplateView):
             _out["content"] = content
 
             # validation
-            if _out["column"].cell_size == 0:
-                continue
+            # if _out["column"].cell_size == 0:
+            #     continue
 
-            if _out["row"].cell_size == 0:
-                continue
+            # if _out["row"].cell_size == 0:
+            #     continue
 
-            if len(_out["content"].cell_content) == 0:
-                continue
+            # if len(_out["content"].cell_content) == 0:
+            #     continue
 
             coord = int(_out["row"].cell_start)
             if coord not in output:

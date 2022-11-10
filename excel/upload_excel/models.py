@@ -45,6 +45,9 @@ def get_bound_items(cell_range: CellRange,
     getter: str = getters[bound_type]
     str_coord: str = cell_range.coord
 
+    if ":" not in str_coord:
+        str_coord = ":".join([str_coord, str_coord])
+
     # set
     start: str
     end: str
@@ -246,8 +249,8 @@ class ExcelSheetModel(models.Model):
 
             cs = list_maker.values.index(cs)
             ce = list_maker.values.index(ce) + 1
-            rs = int(rs)
-            re = int(re) + 1
+            rs = int(rs) - 1
+            re = int(re)
 
             # TODO null部分を縦1x横上に合わせて最大の長方形として全て定義し直す。値は空。
             excel_array[rs:re, cs:ce][excel_array[rs:re, cs:ce] == 0] = n + 1
@@ -255,8 +258,50 @@ class ExcelSheetModel(models.Model):
                 "text": txt, "ranges": [(cs, ce), (rs, re)],
                 "merged_cell": cell_ranges.ranges[n]
             }
-
         excel_array[excel_array == 0] = None
+        count = np.nanmax(excel_array) + 1
+
+        for row_idx, row in enumerate(excel_array):
+            width_list = []
+            null_row = row == 0
+            shift_null = np.r_[np.ones((1, ), dtype=bool), null_row[:-1]]
+
+            start_points = (null_row & ~shift_null).nonzero()[0]
+            end_points = (~null_row & shift_null).nonzero()[0]
+
+            if row[0]:
+                start_points = np.r_[np.array([0]), start_points]
+
+            if len(start_points) > len(end_points):
+                end_points = np.r_[end_points, np.array([None])]
+
+            for s, e in zip(start_points, end_points):
+                width_list.append(s)
+                width_list.append(e)
+
+            for i in range(len(width_list)//2):
+                start = width_list[2 * i]
+                end = width_list[2 * i + 1]
+
+                if end is not None:
+                    excel_array[row_idx, start:end] = count
+                else:
+                    excel_array[row_idx, start:] = count
+
+                if end is None:
+                    end = len(row) - 1
+
+                start_cell = list_maker.values[start] + str(row_idx + 1)
+                end_cell = list_maker.values[end - 1] + str(row_idx + 1)
+                print(start_cell, end_cell)
+                merged_cell = start_cell + ":" + end_cell
+                merged_cell = CellRange(range_string=merged_cell)
+
+                out_map[count] = {
+                    "text": "", "ranges": [(start, end + 1), (row_idx, row_idx + 1)],
+                    "merged_cell": merged_cell
+                }
+                count += 1
 
         cell_content: dict[int, str] = {
             idx: contents["text"] for idx, contents in out_map.items()
@@ -273,7 +318,6 @@ class ExcelSheetModel(models.Model):
                              idx=idx,
                              node=tree.tree[idx])
 
-# TODO cell range　をA1タイプにして行列それぞれに入力する術を考えること
 class CellRangeModel(models.Model):
     excel_sheet: _F = models.ForeignKey(
         ExcelSheetModel,
@@ -530,6 +574,9 @@ class ContentModel(models.Model):
                              worksheet: Worksheet,
                              cell_range: CellRange) -> str:
         coord: str = cell_range.coord
+        if ":" not in coord:
+            coord = ":".join([coord, coord])
+
         start, end = coord.split(":")
         cell_info: Tuple[Tuple[Cell, ...]] = worksheet[start:end]
         output: str = ""
