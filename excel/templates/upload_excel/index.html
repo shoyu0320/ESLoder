@@ -15,17 +15,19 @@
 
         table {
             width: 75%;
-            border: 1px #a47eee solid;
+            border: 1px #777777 solid;
         }
 
         td {
             width: 5%;
-            border: 1px #da84ac solid;
+            background-color: #d2d2d2;
+            border: 1px #ffffff solid;
         }
 
         tr {
             width: 5%;
-            border: 1px
+            background-color: #d2d2d2;
+            border: 1px #ffffff solid;
         }
     </style>
 </head>
@@ -48,7 +50,7 @@
                     {% for coord, merged_cells in display.items %}
                     <tr class="border_line_2">
                         {% for merged_cell in merged_cells %}
-                        {% if not merged_cell.merged_cell.has_parent %}
+                        {% if not merged_cell.merged_cell.has_parent or merged_cell.merged_cell.is_dev_exp_id %}
                     </tr>
                 </table>
                 <table>

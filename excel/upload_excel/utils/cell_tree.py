@@ -1,4 +1,4 @@
-from typing import List, Optional, TypeVar
+from typing import Any, List, Optional, TypeVar
 
 import numpy as np
 
@@ -9,15 +9,24 @@ _CellTree = TypeVar("_CellTree", bound="CellTree")
 class CellNode:
     def __init__(self,
                  idx: int = 0,
-                 child_rate: float = 0.5):
+                 child_rate: float = 0.5,
+                 content: str = ""):
         self.right_children: List[_CellNode] = []
         self.bottom_children: List[_CellNode] = []
         self.left_parents: List[_CellNode] = []
         self.top_parents: List[_CellNode] = []
-        self.content = ""
+        self.content = content
         self.idx = idx
         self.child_rate = child_rate
         self.right_pad: int = 0
+        self.temp_width: Optional[bool] = None
+
+    def is_dev_experience(self) -> bool:
+        flg = True
+        flg &= self.has_top()
+        flg &= self.has_right()
+        flg &= not self.has_left()
+        return flg
 
     def has_parent(self) -> bool:
         flg: bool = False
@@ -34,8 +43,20 @@ class CellNode:
     def has_right(self) -> bool:
         return len(self.right_children) > 0
 
+    def has_right_single(self) -> bool:
+        return len(self.right_children) == 1
+
+    def has_right_multi(self) -> bool:
+        return len(self.right_children) > 1
+
     def has_bottom(self) -> bool:
         return len(self.bottom_children) > 0
+
+    def has_bottom_single(self) -> bool:
+        return len(self.bottom_children) == 1
+
+    def has_bottom_multi(self) -> bool:
+        return len(self.bottom_children) > 1
 
     def has_top(self) -> bool:
         return len(self.top_parents) > 0
@@ -59,11 +80,11 @@ class CellNode:
 
     @property
     def depth_right(self) -> int:
-        output: int = self.width
+        output: int = self.temp_width
         if not self.has_right():
             return output
         else:
-            child_depth: int = max([child.dept_right for child in self.right_children])
+            child_depth: int = max([child.depth_right for child in self.right_children])
             return output + child_depth
 
     @property
@@ -77,25 +98,78 @@ class CellNode:
 
     @property
     def width(self) -> int:
+        if self.temp_width is not None:
+            return self.right_pad + self.temp_width
+
         output: int = self.right_pad
-        if len(self.bottom_children) == 0:
-            return output + 1
-        else:
+        if self.has_bottom():
             output += self.bottom_children[0].width
             for child in self.bottom_children[1:]:
                 if isinstance(child, (int, float)):
                     output += 1
                 else:
                     output += child.width
-            return output
+        else:
+            output += 1
+        self.temp_width = output
+        return output
+
+    def get_attribute_messages(self, _attr: str, recurse: bool = True, space_size: int = 0, depth: int = 1) -> str:
+        out_list: List[str] = []
+        space_size += len(_attr) + 2
+        depth -= 1
+        txt: str
+        attr: List[_CellNode] = getattr(self, _attr)
+        for node in attr:
+            if recurse and (depth > 0):
+                out_list.append(node._helpful_attributes_message(recurse, space_size, depth=depth))
+            else:
+                txt = str(node.content).replace("\n", "/")
+                if len(txt) > 10:
+                    txt = txt[:10]
+                out_list.append(txt)
+        return '\n'.join(out_list)
+
+    def _helpful_attributes_message(self, recurse: bool = True, space: int = 0, depth: int = 1) -> str:
+        _space: str = " " * space
+        lp: str = self.get_attribute_messages("left_parents", recurse=recurse, space_size=space, depth=depth)
+        rc: str = self.get_attribute_messages("right_children", recurse=recurse, space_size=space, depth=depth)
+        tp: str = self.get_attribute_messages("top_parents", recurse=recurse, space_size=space, depth=depth)
+        bc: str = self.get_attribute_messages("bottom_children", recurse=recurse, space_size=space, depth=depth)
+        return (
+            "\n"
+            f"{_space}Helpful attributes;\n"
+            f"{_space}'idx'; {self.idx}\n"
+            f"{_space}'right_pad'; {self.right_pad}\n"
+            f"{_space}'width'; {self.width}\n"
+            f"{_space}'content'; {self.content}\n"
+            f"{_space}'left_parents'; {lp}\n"
+            f"{_space}'right_children'; {rc}\n"
+            f"{_space}'top_parents'; {tp}\n"
+            f"{_space}'bottom_children'; {bc}\n"
+        )
 
     def pad_right(self, max_depth: int = 0, accum_width: int = 0) -> None:
+        current_width: int = accum_width + self.temp_width
+        if current_width > max_depth:
+            raise ValueError(
+                "'current_width' is a size of accumulated elements of the complete cell block "
+                "which is constructed with 'max_depth' pieces of elements.\n"
+                "That is why, 'current_width' must have less positive integer value than 'max_depth'.\n"
+                f"'current_width'; {current_width}, max_depth; {max_depth}\n"
+                f"{self._helpful_attributes_message(depth=3)}"
+            )
+
         if not self.has_right():
-            self.right_pad: int = max_depth - (accum_width + self.width)
+            self.right_pad: int = max_depth - current_width
         else:
             for child in self.right_children:
-                current_width = accum_width + self.width
                 child.pad_right(max_depth, current_width)
+
+        if self.has_bottom():
+            for child in self.bottom_children:
+                if not child.has_left():
+                    child.pad_right(max_depth, accum_width=accum_width)
 
     def get_next_list(self, use_dim: int = 0) -> List[int]:
         if use_dim == 0:
@@ -190,9 +264,12 @@ class CellNode:
 
 class CellTree:
     @classmethod
-    def create_tree(cls, array, child_rate: float = 0.5) -> _CellTree:
+    def create_tree(cls,
+                    array,
+                    child_rate: float = 0.5,
+                    cell_content: dict[int, str] = {}) -> _CellTree:
         tree = cls(array, child_rate)
-        tree.make_graph()
+        tree.make_graph(cell_content)
         tree.normalize_cells()
         return tree
 
@@ -201,14 +278,16 @@ class CellTree:
         self.child_rate = child_rate
         self.tree: dict[int, CellNode] = {}
 
-    def make_nodes(self, unique_idx: List[int]) -> None:
+    def make_nodes(self, unique_idx: List[int], cell_content: dict[int, str]) -> None:
+        content: Optional[str]
         for idx in unique_idx:
-            self.tree[idx] = CellNode(idx, self.child_rate)
+            content = cell_content.get(idx, None)
+            self.tree[idx] = CellNode(idx=idx,
+                                      child_rate=self.child_rate,
+                                      content=content)
 
     def normalize_cells(self) -> None:
-        # TODO 深さ探索して最深までの階層をちゃんと出す
         roots: dict[int, CellNode] = self.get_roots()
-        print(roots)
         max_in_block: int
         for idx, node in roots.items():
             max_in_block = node.depth_right
@@ -217,7 +296,9 @@ class CellTree:
     def get_roots(self) -> dict[int, CellNode]:
         output: dict[int, CellNode] = {}
         for idx, node in self.tree.items():
-            if not node.has_parent:
+            # temp_widthを作っておく
+            node.width
+            if not node.has_parent():
                 output[idx] = node
         return output
 
@@ -233,9 +314,9 @@ class CellTree:
             for child in children:
                 self.tree[child.idx].add_parent(node, use_dim=use_dim)
 
-    def make_graph(self) -> None:
+    def make_graph(self, cell_content: dict[int, str] = {}) -> None:
         idx_unique = np.unique(
             self.excel_array.astype(int)).tolist()
-        self.make_nodes(idx_unique)
+        self.make_nodes(idx_unique, cell_content)
         self.make_edges(use_dim=0)
         self.make_edges(use_dim=1)

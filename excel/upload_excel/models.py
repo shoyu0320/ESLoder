@@ -171,7 +171,7 @@ class ExcelSheetModel(models.Model):
         editable=True,
     )
     excel_matrix: np.ndarray
-    child_rate: float = 0.9
+    child_rate: float = 0.95
     class Meta:
         db_table: str = "excel_sheet"
 
@@ -244,14 +244,12 @@ class ExcelSheetModel(models.Model):
                 for cell in cells:
                     txt += get_text(cell)
 
-            if len(txt) < 1:
-                continue
-
             cs = list_maker.values.index(cs)
             ce = list_maker.values.index(ce) + 1
             rs = int(rs)
             re = int(re) + 1
 
+            # TODO null部分を縦1x横上に合わせて最大の長方形として全て定義し直す。値は空。
             excel_array[rs:re, cs:ce][excel_array[rs:re, cs:ce] == 0] = n + 1
             out_map[n + 1] = {
                 "text": txt, "ranges": [(cs, ce), (rs, re)],
@@ -260,7 +258,12 @@ class ExcelSheetModel(models.Model):
 
         excel_array[excel_array == 0] = None
 
-        tree = CellTree.create_tree(excel_array, child_rate=self.child_rate)
+        cell_content: dict[int, str] = {
+            idx: contents["text"] for idx, contents in out_map.items()
+        }
+        tree = CellTree.create_tree(excel_array,
+                                    child_rate=self.child_rate,
+                                    cell_content=cell_content)
 
         for idx, outs in out_map.items():
             CellRangeModel.\
@@ -336,6 +339,13 @@ class CellRangeModel(models.Model):
         default=True,
         editable=True,
     )
+    is_dev_exp_id: _F = models.BooleanField(
+        verbose_name="開発経験IDかどうか",
+        blank=False,
+        null=False,
+        default=False,
+        editable=True,
+    )
     class Meta:
         db_table: str = "cell_range"
 
@@ -354,7 +364,8 @@ class CellRangeModel(models.Model):
                         cell_range_id_by_order=idx,
                         effective_cell_width=node.width,
                         effective_cell_height=node.height,
-                        has_parent=node.has_parent())
+                        has_parent=node.has_parent(),
+                        is_dev_exp_id=node.is_dev_experience())
         crm.save(force_insert=True)
         ColumnModel.create_model(cell_range_model=crm,
                                  cell_range=cell_range,
