@@ -6,6 +6,21 @@ _CellNode = TypeVar("_CellNode", bound="CellNode")
 _CellTree = TypeVar("_CellTree", bound="CellTree")
 _N = TypeVar("_N", bound=List[Union[int, "CellNode"]])
 
+titles = [
+    "スペックシート", "ポートフォリオ",
+    "スキル要約", "扱ったデータ・モデル",
+    "アピールポイント", "資格",
+    "前職や研究内容など", "経験",
+    "待機期間"
+]
+
+
+def is_num(txt: str) -> bool:
+    try:
+        float(txt)
+        return True
+    except ValueError:
+        return False
 
 class CellNode:
     titles: List[str] = titles
@@ -351,10 +366,12 @@ class CellTree:
     def make_nodes(self, unique_idx: List[int], cell_content: dict[int, str]) -> None:
         content: Optional[str]
         for idx in unique_idx:
-            content = cell_content.get(idx, None)
+            content = cell_content.get(idx, {}).get("text", None)
+            info = cell_content.get(idx, {}).get("info", {})
             self.tree[idx] = CellNode(idx=idx,
                                       child_rate=self.child_rate,
-                                      content=content)
+                                      content=content,
+                                      info=info)
 
     def normalize_cells(self) -> None:
         roots: dict[int, CellNode] = self.get_roots()
