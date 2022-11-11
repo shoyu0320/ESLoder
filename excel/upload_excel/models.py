@@ -686,8 +686,8 @@ class ContentModel(models.Model):
     )
     cell_content: _F = models.TextField(
         verbose_name="セルの内容",
-        blank=False,
-        null=False,
+        blank=True,
+        null=True,
         default="",
         editable=True,
     )
