@@ -536,6 +536,7 @@ class CellRangeModel(models.Model):
         # an inputting parent model which has been defined
         # as foreign key model at child must be saved before.
         crm: _CRM = cls(excel_sheet=excel_sheet,
+                        cell_range_id=uuid.uuid4(),
                         cell_range_id_by_order=idx,
                         effective_cell_width=node.width,
                         effective_cell_height=node.height,
