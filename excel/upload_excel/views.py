@@ -7,8 +7,8 @@ from django.shortcuts import redirect, render
 from django.urls import reverse_lazy
 from django.views.generic import TemplateView
 from upload_excel.forms import ColumnForm, ContentForm, RowForm, UploadForm
-from upload_excel.models import (ColumnModel, ContentModel, ExcelSheetModel,
-                                 RowModel)
+from upload_excel.models import (CellRangeModel, ColumnModel, ContentModel,
+                                 ExcelSheetModel, RowModel)
 from upload_excel.utils.sort import A2ZListMaker
 
 _QS = TypeVar("_QS", bound=QuerySet)
@@ -91,16 +91,6 @@ class UploadExcelView(TemplateView):
             content = merged_cell.content.filter(cell_range=merged_cell).all().last()
             _out["content"] = content
 
-            # validation
-            # if _out["column"].cell_size == 0:
-            #     continue
-
-            # if _out["row"].cell_size == 0:
-            #     continue
-
-            # if len(_out["content"].cell_content) == 0:
-            #     continue
-
             coord = int(_out["row"].cell_start)
             if coord not in output:
                 for c in range(1, coord + 1):
@@ -116,7 +106,6 @@ class UploadExcelView(TemplateView):
             # openpyxl はバイナリファイルを指定してあげることもできる。許せない。
             # 参考: https://stackoverflow.com/questions/20635778/using-openpyxl-to-read-file-from-memory
             esm: ExcelSheetModel = ExcelSheetModel.create_model(request, file_key="file", sheet_type="profile")
-            context["display"] = {}
             context["display"] = self._make_display_context(esm)
             context["excel_id"] = esm.sheet_id
 
@@ -130,6 +119,61 @@ class UploadExcelView(TemplateView):
         context["display"] = None
         return render(request, self.template_name, context=context)
 
+
+class CellUpdateView(UploadExcelView):
+    form_class = ContentForm
+    template_name: str = "upload_excel/update.html"
+    success_url: str = reverse_lazy("index")
+
+    def _get_basic_context(self) -> dict[str, Any]:
+        return {
+            "user_id": self.kwargs["user_id"],
+            "cell_id": self.kwargs["cell_id"],
+            "cell_uuid": self.kwargs["cell_uuid"],
+        }
+
+    def get_success_url(self) -> str:
+        kwargs: dict[str, Any] = self._get_attrs()
+        url: str = self._get_url(kwargs)
+        return reverse_lazy(url, kwargs=kwargs)
+
+    def get_cell_range_from_db(self, cell_id: int, cell_uuid: str) -> Tuple[str, str]:
+        cell_range_set: _QS = CellRangeModel.objects.\
+            filter(cell_range_id_by_order=cell_id, cell_range_id=cell_uuid)
+        cell_range: CellRangeModel = cell_range_set.last()
+        row_data: _QS = RowModel.objects.filter(cell_range=cell_range).all()
+        col_data: _QS = ColumnModel.objects.filter(cell_range=cell_range).all()
+
+        start: str = col_data.last().cell_start + row_data.last().cell_start
+        end: str = col_data.last().cell_end + row_data.last().cell_end
+        return (start, end)
+
+    def get_cell_text_from_db(self, cell_id: int, cell_uuid: str) -> str:
+        cell_range_set: _QS = CellRangeModel.objects.\
+            filter(cell_range_id_by_order=cell_id, cell_range_id=cell_uuid)
+        cell_range: CellRangeModel = cell_range_set.last()
+        content: _QS = ContentModel.objects.filter(cell_range=cell_range).all()
+
+        return content.last().cell_content
+
+    def post(self, request: HttpRequest, *args, **kwargs):
+        context: dict[str, Any] = self._get_basic_context()
+        if request.method == "POST":
+            user_id: str = self.kwargs["user_id"]
+            esm: ExcelSheetModel = ExcelSheetModel.objects.filter(sheet_id=user_id).all().last()
+            context["excel_id"] = esm.sheet_id
+            context["display"] = self._make_display_context(esm)
+
+        return render(request, "upload_excel/index.html", context=context)
+
+    def get(self, request: HttpRequest,
+            *args: Tuple[Any, ...],
+            **kwargs: dict[str, Any]) -> HttpResponse:
+        context: dict[str, Any] = self._get_basic_context()
+        args: Tuple[str, str] = context["cell_id"], context["cell_uuid"]
+        context["cell"] = self.get_cell_range_from_db(*args)
+        context["content"] = self.form_class(initial_text=self.get_cell_text_from_db(*args))
+        return render(request, self.template_name, context)
 
 class DisplaySheetView(TemplateView):
     form_class = UploadForm
