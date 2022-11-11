@@ -180,7 +180,7 @@ class ExcelSheetModel(models.Model):
         editable=True,
     )
     excel_matrix: np.ndarray
-    child_rate: float = 0.95
+    child_rate: float = 0.5
     class Meta:
         db_table: str = "excel_sheet"
 
