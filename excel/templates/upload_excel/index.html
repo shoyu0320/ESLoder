@@ -52,12 +52,34 @@
         a:hover {
             background-color: #fdd7d7;
         }
+
+        .button {
+            display: inline-block;
+            border-style: solid;
+            color: black;
+            background-color: rgb(225, 224, 224);
+            border-width: 1px;
+            border-color: darkgray;
+            text-decoration: none;
+            font-size: 8pt;
+            /* text-align: right; */
+        }
+
+        .items {
+            line-height: 2pt;
+        }
+
+        .dev_exp {
+            line-height: 20pt;
+        }
     </style>
 </head>
 
 <body>
     <h1>
-        エクセルシート選択画面
+        <div id="page-top">
+            エクセルシート選択画面
+        </div>
     </h1>
     <div class="user-menu">
         <h2>
@@ -68,6 +90,33 @@
                 <button name="btn_submit" type="file">アップロード</button>
             </form>
             {% else %}
+            <p class="items">
+                大項目
+            </p>
+            {% for coord, merged_cells in display.items %}
+            {% for merged_cell in merged_cells %}
+            {% if merged_cell.merged_cell.include_title %}
+            <p class="items">
+                <a href="#{{ merged_cell.merged_cell.cell_range_id_by_order }}" style="font-size: 10pt;">
+                    {{ merged_cell.content.cell_content }}
+                </a>
+            </p>
+            {% endif %}
+            {% endfor %}
+            {% endfor %}
+
+            <p class="dev_exp">
+                開発経験<br>
+                {% for coord, merged_cells in display.items %}
+                {% for merged_cell in merged_cells %}
+                {% if merged_cell.merged_cell.is_dev_exp_id %}
+                <a href="#{{ merged_cell.merged_cell.cell_range_id_by_order }}" style="font-size: 10pt;">
+                    {{ merged_cell.content.cell_content }}
+                </a>
+                {% endif %}
+                {% endfor %}
+                {% endfor %}
+            </p>
             <table>
                 <table class="sub_table">
                     {% for coord, merged_cells in display.items %}
@@ -78,12 +127,13 @@
                     </tr>
                 </table>
                 <br>
-                <table class="sub_table">
+                <table class=" sub_table">
                     <tr class="border_line_2">
                         {% endif %}
 
                         <td colspan="{{ merged_cell.merged_cell.effective_cell_width }}"
-                            rowspan="{{ merged_cell.merged_cell.effective_cell_height }}">
+                            rowspan="{{ merged_cell.merged_cell.effective_cell_height }}"
+                            id="{{ merged_cell.merged_cell.cell_range_id_by_order }}">
                             <a href="{% url 'upload_excel:update' excel_id merged_cell.merged_cell.cell_range_id_by_order merged_cell.merged_cell.cell_range_id %}"
                                 class="weblink">
                                 {{ merged_cell.content.cell_content | linebreaksbr }}
@@ -103,7 +153,11 @@
             </table>
             {% endif %}
         </h2>
+        <h3>
+            <a href="{% url 'index' %}">シート選択画面に戻る</a>
+        </h3>
     </div>
+
 </body>
 
 </html>
