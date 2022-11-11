@@ -24,6 +24,7 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("", views.UploadExcelView.as_view(), name="index"),
     path("excel_sheet/", include("upload_excel.urls")),
+    path("download_excel/", include("download_excel.urls")),
 ]
 
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
