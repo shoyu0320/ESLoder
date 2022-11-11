@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>セル更新画面</title>
+</head>
+
+<body>
+    <h1>
+        {{ cell.0 }}:{{ cell.1 }}セル更新
+    </h1>
+    <div class="cell-update">
+        <form action="" method="post" name="update" enctype="multipart/form-data">
+            {{ content.cell_content }}<br>
+            {% csrf_token %}
+            <button name="btn_submit">更新</button>
+    </div>
+</body>
+
+</html>

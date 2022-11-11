@@ -15,19 +15,42 @@
 
         table {
             width: 75%;
-            border: 1px #777777 solid;
+            margin-left: auto;
+            margin-right: auto;
         }
 
         td {
-            width: 5%;
-            background-color: #d2d2d2;
-            border: 1px #ffffff solid;
+            width: 10%;
+            border: 1px #66629e dashed;
+            font-size: 8pt;
         }
 
         tr {
             width: 5%;
-            background-color: #d2d2d2;
-            border: 1px #ffffff solid;
+        }
+    </style>
+    <style type="text/css">
+        table.sub_table td a {
+            display: block;
+            /* リンクをブロックレベル化して表示 */
+            padding: 0.6em 1em;
+            /* 内側の余白量を上下に0.6文字分＆左右に1文字分にする */
+            text-decoration: none;
+            line-height: 1.4;
+            height: 100%;
+            display: flex;
+            align-items: center;
+        }
+
+        .sub_table {
+            padding: 0;
+            height: 0;
+            width: 80%;
+            background-color: #ededed;
+        }
+
+        a:hover {
+            background-color: #fdd7d7;
         }
     </style>
 </head>
@@ -46,20 +69,27 @@
             </form>
             {% else %}
             <table>
-                <table>
+                <table class="sub_table">
                     {% for coord, merged_cells in display.items %}
                     <tr class="border_line_2">
                         {% for merged_cell in merged_cells %}
-                        {% if not merged_cell.merged_cell.has_parent or merged_cell.merged_cell.is_dev_exp_id %}
+                        {% if not merged_cell.merged_cell.is_end_of_sheet and not merged_cell.merged_cell.is_space %}
+                        {% if merged_cell.merged_cell.include_title or merged_cell.merged_cell.is_dev_exp_id %}
                     </tr>
                 </table>
-                <table>
+                <br>
+                <table class="sub_table">
                     <tr class="border_line_2">
                         {% endif %}
+
                         <td colspan="{{ merged_cell.merged_cell.effective_cell_width }}"
                             rowspan="{{ merged_cell.merged_cell.effective_cell_height }}">
-                            {{ merged_cell.content.cell_content | linebreaksbr }}
+                            <a href="{% url 'upload_excel:update' excel_id merged_cell.merged_cell.cell_range_id_by_order merged_cell.merged_cell.cell_range_id %}"
+                                class="weblink">
+                                {{ merged_cell.content.cell_content | linebreaksbr }}
+                            </a>
                         </td>
+                        {% endif %}
                         {% endfor %}
                     </tr>
                     {% endfor %}

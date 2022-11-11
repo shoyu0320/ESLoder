@@ -114,6 +114,12 @@ class ESTemplateNamesModel(models.Model):
             return output
 
 class ExcelSheetModel(models.Model):
+    ng_words: List[str] = [
+        "各項目は半角カンマ+半角スペースで区切ってください。",
+        "各項目は半角カンマ+半角スペースで区切ってください。",
+        "アピールポイントは具体的に記載してください。",
+        "同じお客様先で2つ以上の現場がある場合は、その旨がわかるように記載"
+    ]
     sheet_create_time: _F = models.DateTimeField(
         verbose_name="シート作成日時",
         blank=False,
@@ -174,7 +180,7 @@ class ExcelSheetModel(models.Model):
         editable=True,
     )
     excel_matrix: np.ndarray
-    child_rate: float = 0.95
+    child_rate: float = 0.5
     class Meta:
         db_table: str = "excel_sheet"
 
@@ -202,7 +208,7 @@ class ExcelSheetModel(models.Model):
         cls.is_valid_request(request, file_key)
         binary: str = cls.get_binary_data(request, file_key)
 
-        workbook: Workbook = openpyxl.load_workbook(binary)
+        workbook: Workbook = openpyxl.load_workbook(binary, data_only=True)
         worksheet: Worksheet = workbook.active
 
         excel_sheet_model: _ESM = cls(sheet_id=uuid.uuid4(),
@@ -217,6 +223,12 @@ class ExcelSheetModel(models.Model):
 
         workbook.close()
         return excel_sheet_model
+
+    def is_ng_sentence(self, text: str) -> bool:
+        flg: bool = False
+        for ng_word in self.ng_words:
+            flg |= ng_word in text
+        return flg
 
     def create_cell_ranges(self, worksheet: Worksheet) -> None:
         # TODO メソッドを細かく分ける
@@ -240,10 +252,10 @@ class ExcelSheetModel(models.Model):
 
         out_map = {}
         rect: dict[str, int] = {
-            "upper_left": 10000,
-            "upper_right": 0,
-            "lower_left": 10000,
-            "lower_right": 0
+            "min_row": 10000,
+            "max_row": 0,
+            "min_col": 10000,
+            "max_col": 0
         }
         for n, out in enumerate(coord_list):
             cs, rs, ce, re = out
@@ -252,7 +264,7 @@ class ExcelSheetModel(models.Model):
                 for cell in cells:
                     txt += get_text(cell)
 
-            if len(txt) < 1:
+            if len(txt) < 1 or self.is_ng_sentence(txt):
                 continue
 
             cs = list_maker.values.index(cs)
@@ -260,10 +272,10 @@ class ExcelSheetModel(models.Model):
             rs = int(rs) - 1
             re = int(re)
 
-            rect["upper_left"] = min([rect["upper_left"], rs])
-            rect["upper_right"] = max([rect["upper_right"], re])
-            rect["lower_left"] = min([rect["lower_left"], cs])
-            rect["lower_right"] = max([rect["lower_right"], ce])
+            rect["min_row"] = min([rect["min_row"], rs])
+            rect["max_row"] = max([rect["max_row"], re])
+            rect["min_col"] = min([rect["min_col"], cs])
+            rect["max_col"] = max([rect["max_col"], ce])
 
             # TODO null部分を縦1x横上に合わせて最大の長方形として全て定義し直す。値は空。
             array_mask = excel_array[rs:re, cs:ce] == 0
@@ -274,7 +286,7 @@ class ExcelSheetModel(models.Model):
             }
 
         excel_mask = np.ones_like(excel_array, dtype=bool)
-        excel_mask[rect["upper_left"]:rect["upper_right"], rect["lower_left"]:rect["lower_right"]] = False
+        excel_mask[rect["min_row"]:rect["max_row"], rect["min_col"]:rect["max_col"]] = False
         excel_array[excel_mask] = None
         count = int(np.nanmax(excel_array)) + 1
 
@@ -331,17 +343,82 @@ class ExcelSheetModel(models.Model):
                 }
                 count += 1
 
+        # zero 梅
+        col_start = 0
+        row_start = 0
+        row_end, col_end = excel_array.shape
+
+        # header
+        if rect["min_row"] > 0:
+            excel_array[row_start:rect["min_row"], col_start:col_end] = count
+            count += 1
+
+            start_cell = list_maker.values[col_start] + str(row_start + 1)
+            end_cell = list_maker.values[col_end - 1] + str(rect["min_row"])
+            merged_cell = start_cell + ":" + end_cell
+            merged_cell = CellRange(range_string=merged_cell)
+
+            out_map[count] = {
+                "text": "", "ranges": [(col_start, col_end + 1), (row_start, rect["min_row"] + 1)],
+                "merged_cell": merged_cell,
+                "info": {"is_EOS": True}
+            }
+
+        # footer
+        if rect["max_row"] < row_end:
+            excel_array[rect["max_row"]:row_end, col_start:col_end] = count
+            count += 1
+
+            start_cell = list_maker.values[col_start] + str(rect["max_row"] + 1)
+            end_cell = list_maker.values[col_end - 1] + str(row_end)
+            merged_cell = start_cell + ":" + end_cell
+            merged_cell = CellRange(range_string=merged_cell)
+
+            out_map[count] = {
+                "text": "", "ranges": [(col_start, col_end + 1), (rect["max_row"], row_end + 1)],
+                "merged_cell": merged_cell,
+                "info": {"is_EOS": True}
+            }
+
+        # lefter
+        if rect["min_col"] > 0:
+            excel_array[row_start:row_end, col_start:rect["min_col"]] = count
+            count += 1
+
+            start_cell = list_maker.values[col_start] + str(row_start + 1)
+            end_cell = list_maker.values[rect["min_col"] - 1] + str(row_end)
+            merged_cell = start_cell + ":" + end_cell
+            merged_cell = CellRange(range_string=merged_cell)
+
+            out_map[count] = {
+                "text": "", "ranges": [(col_start, rect["min_col"] + 1), (row_start, row_end + 1)],
+                "merged_cell": merged_cell,
+                "info": {"is_EOS": True}
+            }
+
+        # righter
+        if rect["max_col"] < col_end:
+            excel_array[row_start:row_end, rect["max_col"]:col_end] = count
+
+            start_cell = list_maker.values[rect["max_col"]] + str(row_start + 1)
+            end_cell = list_maker.values[col_end - 1] + str(row_end)
+            merged_cell = start_cell + ":" + end_cell
+            merged_cell = CellRange(range_string=merged_cell)
+
+            out_map[count] = {
+                "text": "", "ranges": [(rect["max_col"], col_end + 1), (row_start, row_end + 1)],
+                "merged_cell": merged_cell,
+                "info": {"is_EOS": True}
+            }
+
         if np.nansum(excel_array == 0) > 0:
             raise ValueError(
                 "No Zero must be included, "
                 f"but there is {np.nansum(excel_array == 0)} zeros in 'excel_array'")
 
-        cell_content: dict[int, str] = {
-            idx: contents["text"] for idx, contents in out_map.items()
-        }
         tree = CellTree.create_tree(excel_array,
                                     child_rate=self.child_rate,
-                                    cell_content=cell_content)
+                                    cell_content=out_map)
 
         for idx, outs in out_map.items():
             CellRangeModel.\
@@ -423,6 +500,27 @@ class CellRangeModel(models.Model):
         default=False,
         editable=True,
     )
+    include_title: _F = models.BooleanField(
+        verbose_name="タイトルかどうか",
+        blank=False,
+        null=False,
+        default=False,
+        editable=True,
+    )
+    is_end_of_sheet: _F = models.BooleanField(
+        verbose_name="シートの最後かどうか",
+        blank=False,
+        null=False,
+        default=False,
+        editable=True,
+    )
+    is_space: _F = models.BooleanField(
+        verbose_name="マージンかどうか",
+        blank=False,
+        null=False,
+        default=False,
+        editable=True,
+    )
     class Meta:
         db_table: str = "cell_range"
 
@@ -442,7 +540,11 @@ class CellRangeModel(models.Model):
                         effective_cell_width=node.width,
                         effective_cell_height=node.height,
                         has_parent=node.has_parent(),
-                        is_dev_exp_id=node.is_dev_experience())
+                        is_dev_exp_id=node.is_dev_experience(),
+                        include_title=node.is_title(),
+                        is_end_of_sheet=node.is_end_of_sheet(),
+                        is_space=node.is_space(),
+                        )
         crm.save(force_insert=True)
         ColumnModel.create_model(cell_range_model=crm,
                                  cell_range=cell_range,
@@ -617,7 +719,7 @@ class ContentModel(models.Model):
             for cell in cell_row:
                 concat_size = len(output)
                 output += get_cell_value(cell, concat_size)
-        return output
+        return output.replace(br_pattern, "\n")
 
     @classmethod
     def create_model(cls,

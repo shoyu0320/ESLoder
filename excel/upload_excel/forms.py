@@ -31,3 +31,9 @@ class ContentForm(forms.ModelForm):
         fields: Tuple[str, ...] = (
             "cell_content",
         )
+
+    def __init__(self, *args, initial_text: str = "", **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.fields['cell_content'].initial = initial_text
+        self.fields['cell_content'].widget = forms.Textarea(attrs={'cols': '100', 'rows': '20'})
