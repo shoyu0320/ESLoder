@@ -84,7 +84,8 @@
 
                         <td colspan="{{ merged_cell.merged_cell.effective_cell_width }}"
                             rowspan="{{ merged_cell.merged_cell.effective_cell_height }}">
-                            <a href="{% url 'index' %}" class="weblink">
+                            <a href="{% url 'upload_excel:update' excel_id merged_cell.merged_cell.cell_range_id_by_order merged_cell.merged_cell.cell_range_id %}"
+                                class="weblink">
                                 {{ merged_cell.content.cell_content | linebreaksbr }}
                             </a>
                         </td>
