@@ -94,6 +94,12 @@
                     </tr>
                     {% endfor %}
                 </table>
+
+                <div align="center">
+                    <a class="button" href="{% url 'download_excel:download' excel_id %}">
+                        ダウンロード
+                    </a>
+                </div>
             </table>
             {% endif %}
         </h2>
