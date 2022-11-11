@@ -208,7 +208,7 @@ class ExcelSheetModel(models.Model):
         cls.is_valid_request(request, file_key)
         binary: str = cls.get_binary_data(request, file_key)
 
-        workbook: Workbook = openpyxl.load_workbook(binary)
+        workbook: Workbook = openpyxl.load_workbook(binary, data_only=True)
         worksheet: Worksheet = workbook.active
 
         excel_sheet_model: _ESM = cls(sheet_id=uuid.uuid4(),
