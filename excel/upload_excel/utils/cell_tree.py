@@ -19,6 +19,12 @@ class CellNode:
         self.bottom_children: _N = []
         self.left_parents: _N = []
         self.top_parents: _N = []
+
+        self.forced_right: _N = []
+        self.forced_left: _N = []
+        self.forced_bottom: _N = []
+        self.forced_top: _N = []
+        self.content = content or ""
         self.idx = idx
         self.child_rate = child_rate
         self.right_pad: int = 0
@@ -74,7 +80,13 @@ class CellNode:
         flg |= self.has_right()
         return flg
 
-    def has_right(self) -> bool:
+    def has_right(self, force: bool = False) -> bool:
+        if force:
+            forced: _N = [
+                fr for fr in self.forced_right
+                if not fr.is_end_of_sheet()
+            ]
+            return len(forced) > 0
         return len(self.right_children) > 0
 
     def has_right_single(self) -> bool:
@@ -194,10 +206,12 @@ class CellNode:
                 f"{self._helpful_attributes_message(depth=3)}"
             )
 
-        if not self.has_right():
+        # if not self.has_right():
+        if not self.has_right(force=True):
             self.right_pad: int = max_depth - current_width
         else:
-            for child in self.right_children:
+            # for child in self.right_children:
+            for child in self.forced_right:
                 child.pad_right(max_depth, current_width)
 
         if self.has_bottom():
@@ -205,7 +219,27 @@ class CellNode:
                 if not child.has_left():
                     child.pad_right(max_depth, accum_width=accum_width)
 
-    def get_next_list(self, use_dim: int = 0) -> List[int]:
+    def get_forced_next_list(self, use_dim: int = 0) -> List[Union[int, _CellNode]]:
+        if use_dim == 0:
+            return self.forced_right
+        elif use_dim == 1:
+            return self.forced_bottom
+        else:
+            raise ValueError()
+
+    def add_forced_child(self, cell: int, use_dim: int = 0) -> None:
+        next_list = self.get_forced_next_list(use_dim)
+        next_list.append(cell)
+
+    def add_forced_parent(self, cell: int, use_dim: int = 0) -> None:
+        if use_dim == 0:
+            self.forced_left.append(cell)
+        elif use_dim == 1:
+            self.forced_top.append(cell)
+        else:
+            raise ValueError()
+
+    def get_next_list(self, use_dim: int = 0) -> List[Union[int, _CellNode]]:
         if use_dim == 0:
             return self.right_children
         elif use_dim == 1:
@@ -295,6 +329,8 @@ class CellNode:
             if next_rate > self.child_rate:
                 self.add_child(tree.get(cell, cell), use_dim)
 
+            self.add_forced_child(tree.get(cell, cell), use_dim)
+
 
 class CellTree:
     @classmethod
@@ -336,6 +372,14 @@ class CellTree:
                 output[idx] = node
         return output
 
+    def register_children_to_parents(self,
+                                     node: _CellNode,
+                                     list_method: str = "get_next_list",
+                                     use_dim: int = 0):
+        children: _N = getattr(node, list_method)(use_dim)
+        for child in children:
+            self.tree[child.idx].add_parent(node, use_dim=use_dim)
+
     def make_edges(self, use_dim: int = 0) -> None:
         for idx, node in self.tree.items():
             if idx < 0:
@@ -344,9 +388,10 @@ class CellTree:
                                  use_dim=use_dim,
                                  tree=self.tree)
 
-            children = node.get_next_list(use_dim)
-            for child in children:
-                self.tree[child.idx].add_parent(node, use_dim=use_dim)
+            for list_method in ["get_next_list", "get_forced_next_list"]:
+                self.register_children_to_parents(node=node,
+                                                  list_method=list_method,
+                                                  use_dim=use_dim)
 
     def make_graph(self, cell_content: dict[int, str] = {}) -> None:
         idx_unique = np.unique(self.excel_array.astype(int))
