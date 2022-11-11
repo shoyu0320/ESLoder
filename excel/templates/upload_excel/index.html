@@ -83,75 +83,11 @@
     </h1>
     <div class="user-menu">
         <h2>
-            {% if display is null %}
             <form action="" method="post" name="upload" enctype="multipart/form-data">
                 {{ upload.file }}<br>
                 {% csrf_token %}
                 <button name="btn_submit" type="file" value="{% url 'upload_excel:upload' excel_id %}">アップロード</button>
             </form>
-            {% else %}
-            <!-- <p class="items">
-                大項目
-            </p>
-            {% for coord, merged_cells in display.items %}
-            {% for merged_cell in merged_cells %}
-            {% if merged_cell.merged_cell.include_title %}
-            <p class="items">
-                <a href="#{{ merged_cell.merged_cell.cell_range_id_by_order }}" style="font-size: 10pt;">
-                    {{ merged_cell.content.cell_content }}
-                </a>
-            </p>
-            {% endif %}
-            {% endfor %}
-            {% endfor %}
-
-            <p class="dev_exp">
-                開発経験<br>
-                {% for coord, merged_cells in display.items %}
-                {% for merged_cell in merged_cells %}
-                {% if merged_cell.merged_cell.is_dev_exp_id %}
-                <a href="#{{ merged_cell.merged_cell.cell_range_id_by_order }}" style="font-size: 10pt;">
-                    {{ merged_cell.content.cell_content }}
-                </a>
-                {% endif %}
-                {% endfor %}
-                {% endfor %}
-            </p>
-            <table>
-                <table class="sub_table">
-                    {% for coord, merged_cells in display.items %}
-                    <tr class="border_line_2">
-                        {% for merged_cell in merged_cells %}
-                        {% if not merged_cell.merged_cell.is_end_of_sheet and not merged_cell.merged_cell.is_space %}
-                        {% if merged_cell.merged_cell.include_title or merged_cell.merged_cell.is_dev_exp_id %}
-                    </tr>
-                </table>
-                <br>
-                <table class=" sub_table">
-                    <tr class="border_line_2">
-                        {% endif %}
-
-                        <td colspan="{{ merged_cell.merged_cell.effective_cell_width }}"
-                            rowspan="{{ merged_cell.merged_cell.effective_cell_height }}"
-                            id="{{ merged_cell.merged_cell.cell_range_id_by_order }}">
-                            <a href="{% url 'upload_excel:update' excel_id merged_cell.merged_cell.cell_range_id_by_order merged_cell.merged_cell.cell_range_id %}"
-                                class="weblink">
-                                {{ merged_cell.content.cell_content | linebreaksbr }}
-                            </a>
-                        </td>
-                        {% endif %}
-                        {% endfor %}
-                    </tr>
-                    {% endfor %}
-                </table>
-
-                <div align="center">
-                    <a class="button" href="{% url 'download_excel:download' excel_id %}">
-                        ダウンロード
-                    </a>
-                </div>
-            </table> -->
-            {% endif %}
         </h2>
         <h3>
             <a href="{% url 'index' %}">シート選択画面に戻る</a>
