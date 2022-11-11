@@ -138,29 +138,36 @@ class CellUpdateView(UploadExcelView):
         return reverse_lazy(url, kwargs=kwargs)
 
     def get_cell_range_from_db(self, cell_id: int, cell_uuid: str) -> Tuple[str, str]:
-        cell_range_set: _QS = CellRangeModel.objects.\
-            filter(cell_range_id_by_order=cell_id, cell_range_id=cell_uuid)
-        cell_range: CellRangeModel = cell_range_set.last()
-        row_data: _QS = RowModel.objects.filter(cell_range=cell_range).all()
-        col_data: _QS = ColumnModel.objects.filter(cell_range=cell_range).all()
+        cell_range: CellRangeModel = CellRangeModel.objects.\
+            get(cell_range_id_by_order=cell_id, cell_range_id=cell_uuid)
+        row_data: RowModel = RowModel.objects.get(cell_range=cell_range)
+        col_data: ColumnModel = ColumnModel.objects.get(cell_range=cell_range)
 
-        start: str = col_data.last().cell_start + row_data.last().cell_start
-        end: str = col_data.last().cell_end + row_data.last().cell_end
+        start: str = col_data.cell_start + row_data.cell_start
+        end: str = col_data.cell_end + row_data.cell_end
         return (start, end)
 
     def get_cell_text_from_db(self, cell_id: int, cell_uuid: str) -> str:
-        cell_range_set: _QS = CellRangeModel.objects.\
-            filter(cell_range_id_by_order=cell_id, cell_range_id=cell_uuid)
-        cell_range: CellRangeModel = cell_range_set.last()
-        content: _QS = ContentModel.objects.filter(cell_range=cell_range).all()
+        cell_range: CellRangeModel = CellRangeModel.objects.\
+            get(cell_range_id_by_order=cell_id, cell_range_id=cell_uuid)
+        content: ContentModel = ContentModel.objects.get(cell_range=cell_range)
 
-        return content.last().cell_content
+        return content.cell_content
 
     def post(self, request: HttpRequest, *args, **kwargs):
         context: dict[str, Any] = self._get_basic_context()
         if request.method == "POST":
             user_id: str = self.kwargs["user_id"]
-            esm: ExcelSheetModel = ExcelSheetModel.objects.filter(sheet_id=user_id).all().last()
+            cell_id: str = self.kwargs["cell_id"]
+            cell_uuid: str = self.kwargs["cell_uuid"]
+            cell_range: CellRangeModel = CellRangeModel.objects.\
+                get(cell_range_id_by_order=cell_id, cell_range_id=cell_uuid)
+            content: ContentModel = ContentModel.objects.get(cell_range=cell_range)
+            form = self.form_class(request.POST, initial_text=content.cell_content, instance=content)
+            if form.is_valid():
+                form.save()
+
+            esm: ExcelSheetModel = ExcelSheetModel.objects.get(sheet_id=user_id)
             context["excel_id"] = esm.sheet_id
             context["display"] = self._make_display_context(esm)
 
