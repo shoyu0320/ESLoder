@@ -20,12 +20,43 @@ class CellNode:
         self.child_rate = child_rate
         self.right_pad: int = 0
         self.temp_width: Optional[bool] = None
+        self.info = info
+
+    def is_end_of_sheet(self) -> bool:
+        return self.info.get("is_EOS", False)
 
     def is_dev_experience(self) -> bool:
         flg = True
         flg &= self.has_top()
         flg &= self.has_right()
-        flg &= not self.has_left()
+        flg &= len("".join([
+            node.content for node in self.left_parents
+        ])) == 0
+        flg &= (
+            is_num(self.content) |
+            self.content.startswith("=")
+        )
+        return flg
+
+    def is_space(self) -> bool:
+        flg: bool = False
+        for child in self.bottom_children:
+            flg |= child.is_title()
+        # flg &= len(self.content) == 0
+        return flg
+
+    def include_title(self) -> bool:
+        flg: bool = False
+        for sentence in self.titles:
+            flg |= sentence in self.content
+        return flg
+
+    def is_title(self) -> bool:
+        flg: bool = True
+        flg &= self.include_title()
+        flg &= len("".join([
+            node.content for node in self.top_parents
+        ])) == 0
         return flg
 
     def has_parent(self) -> bool:

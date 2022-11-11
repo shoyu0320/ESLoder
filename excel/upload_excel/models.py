@@ -423,6 +423,27 @@ class CellRangeModel(models.Model):
         default=False,
         editable=True,
     )
+    include_title: _F = models.BooleanField(
+        verbose_name="タイトルかどうか",
+        blank=False,
+        null=False,
+        default=False,
+        editable=True,
+    )
+    is_end_of_sheet: _F = models.BooleanField(
+        verbose_name="シートの最後かどうか",
+        blank=False,
+        null=False,
+        default=False,
+        editable=True,
+    )
+    is_space: _F = models.BooleanField(
+        verbose_name="マージンかどうか",
+        blank=False,
+        null=False,
+        default=False,
+        editable=True,
+    )
     class Meta:
         db_table: str = "cell_range"
 
@@ -442,7 +463,11 @@ class CellRangeModel(models.Model):
                         effective_cell_width=node.width,
                         effective_cell_height=node.height,
                         has_parent=node.has_parent(),
-                        is_dev_exp_id=node.is_dev_experience())
+                        is_dev_exp_id=node.is_dev_experience(),
+                        include_title=node.is_title(),
+                        is_end_of_sheet=node.is_end_of_sheet(),
+                        is_space=node.is_space(),
+                        )
         crm.save(force_insert=True)
         ColumnModel.create_model(cell_range_model=crm,
                                  cell_range=cell_range,
