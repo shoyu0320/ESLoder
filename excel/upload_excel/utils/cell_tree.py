@@ -52,14 +52,10 @@ class CellNode:
     def is_dev_experience(self) -> bool:
         flg = True
         flg &= self.has_top()
-        flg &= self.has_right()
+        flg &= self.height > 1
         flg &= len("".join([
             node.content for node in self.left_parents
         ])) == 0
-        flg &= (
-            is_num(self.content) |
-            self.content.startswith("=")
-        )
         return flg
 
     def is_space(self) -> bool:
