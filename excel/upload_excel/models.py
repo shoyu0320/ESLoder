@@ -114,6 +114,11 @@ class ESTemplateNamesModel(models.Model):
             return output
 
 class ExcelSheetModel(models.Model):
+        "各項目は半角カンマ+半角スペースで区切ってください。",
+        "各項目は半角カンマ+半角スペースで区切ってください。",
+        "アピールポイントは具体的に記載してください。",
+        "同じお客様先で2つ以上の現場がある場合は、その旨がわかるように記載"
+    ]
     sheet_create_time: _F = models.DateTimeField(
         verbose_name="シート作成日時",
         blank=False,
@@ -218,6 +223,12 @@ class ExcelSheetModel(models.Model):
         workbook.close()
         return excel_sheet_model
 
+    def is_ng_sentence(self, text: str) -> bool:
+        flg: bool = False
+        for ng_word in self.ng_words:
+            flg |= ng_word in text
+        return flg
+
     def create_cell_ranges(self, worksheet: Worksheet) -> None:
         # TODO メソッドを細かく分ける
         list_maker = A2ZListMaker(max_size=worksheet.max_column, init=string.ascii_uppercase)
@@ -240,10 +251,10 @@ class ExcelSheetModel(models.Model):
 
         out_map = {}
         rect: dict[str, int] = {
-            "upper_left": 10000,
-            "upper_right": 0,
-            "lower_left": 10000,
-            "lower_right": 0
+            "min_row": 10000,
+            "max_row": 0,
+            "min_col": 10000,
+            "max_col": 0
         }
         for n, out in enumerate(coord_list):
             cs, rs, ce, re = out
@@ -252,7 +263,7 @@ class ExcelSheetModel(models.Model):
                 for cell in cells:
                     txt += get_text(cell)
 
-            if len(txt) < 1:
+            if len(txt) < 1 or self.is_ng_sentence(txt):
                 continue
 
             cs = list_maker.values.index(cs)
@@ -260,10 +271,10 @@ class ExcelSheetModel(models.Model):
             rs = int(rs) - 1
             re = int(re)
 
-            rect["upper_left"] = min([rect["upper_left"], rs])
-            rect["upper_right"] = max([rect["upper_right"], re])
-            rect["lower_left"] = min([rect["lower_left"], cs])
-            rect["lower_right"] = max([rect["lower_right"], ce])
+            rect["min_row"] = min([rect["min_row"], rs])
+            rect["max_row"] = max([rect["max_row"], re])
+            rect["min_col"] = min([rect["min_col"], cs])
+            rect["max_col"] = max([rect["max_col"], ce])
 
             # TODO null部分を縦1x横上に合わせて最大の長方形として全て定義し直す。値は空。
             array_mask = excel_array[rs:re, cs:ce] == 0
@@ -274,7 +285,7 @@ class ExcelSheetModel(models.Model):
             }
 
         excel_mask = np.ones_like(excel_array, dtype=bool)
-        excel_mask[rect["upper_left"]:rect["upper_right"], rect["lower_left"]:rect["lower_right"]] = False
+        excel_mask[rect["min_row"]:rect["max_row"], rect["min_col"]:rect["max_col"]] = False
         excel_array[excel_mask] = None
         count = int(np.nanmax(excel_array)) + 1
 
