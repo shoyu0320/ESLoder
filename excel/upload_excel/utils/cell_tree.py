@@ -1,21 +1,24 @@
-from typing import Any, List, Optional, TypeVar
+from typing import Any, List, Optional, TypeVar, Union
 
 import numpy as np
 
 _CellNode = TypeVar("_CellNode", bound="CellNode")
 _CellTree = TypeVar("_CellTree", bound="CellTree")
+_N = TypeVar("_N", bound=List[Union[int, "CellNode"]])
 
 
 class CellNode:
+    titles: List[str] = titles
+
     def __init__(self,
                  idx: int = 0,
                  child_rate: float = 0.5,
-                 content: str = ""):
-        self.right_children: List[_CellNode] = []
-        self.bottom_children: List[_CellNode] = []
-        self.left_parents: List[_CellNode] = []
-        self.top_parents: List[_CellNode] = []
-        self.content = content
+                 content: str = "",
+                 info: dict[str, Any] = {}):
+        self.right_children: _N = []
+        self.bottom_children: _N = []
+        self.left_parents: _N = []
+        self.top_parents: _N = []
         self.idx = idx
         self.child_rate = child_rate
         self.right_pad: int = 0
@@ -150,7 +153,7 @@ class CellNode:
         space_size += len(_attr) + 2
         depth -= 1
         txt: str
-        attr: List[_CellNode] = getattr(self, _attr)
+        attr: _N = getattr(self, _attr)
         for node in attr:
             if recurse and (depth > 0):
                 out_list.append(node._helpful_attributes_message(recurse, space_size, depth=depth))
