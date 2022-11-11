@@ -114,6 +114,7 @@ class ESTemplateNamesModel(models.Model):
             return output
 
 class ExcelSheetModel(models.Model):
+    ng_words: List[str] = [
         "各項目は半角カンマ+半角スペースで区切ってください。",
         "各項目は半角カンマ+半角スペースで区切ってください。",
         "アピールポイントは具体的に記載してください。",
