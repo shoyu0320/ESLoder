@@ -230,7 +230,7 @@ class CellNode:
                 if not child.has_left():
                     child.pad_right(max_depth, accum_width=accum_width)
 
-    def get_forced_next_list(self, use_dim: int = 0) -> List[Union[int, _CellNode]]:
+    def get_forced_next_list(self, use_dim: int = 0) -> _N:
         if use_dim == 0:
             return self.forced_right
         elif use_dim == 1:
@@ -250,7 +250,7 @@ class CellNode:
         else:
             raise ValueError()
 
-    def get_next_list(self, use_dim: int = 0) -> List[Union[int, _CellNode]]:
+    def get_next_list(self, use_dim: int = 0) -> _N:
         if use_dim == 0:
             return self.right_children
         elif use_dim == 1:
