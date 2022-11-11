@@ -719,7 +719,7 @@ class ContentModel(models.Model):
             for cell in cell_row:
                 concat_size = len(output)
                 output += get_cell_value(cell, concat_size)
-        return output
+        return output.replace(br_pattern, "\n")
 
     @classmethod
     def create_model(cls,
