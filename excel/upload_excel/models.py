@@ -342,17 +342,82 @@ class ExcelSheetModel(models.Model):
                 }
                 count += 1
 
+        # zero 梅
+        col_start = 0
+        row_start = 0
+        row_end, col_end = excel_array.shape
+
+        # header
+        if rect["min_row"] > 0:
+            excel_array[row_start:rect["min_row"], col_start:col_end] = count
+            count += 1
+
+            start_cell = list_maker.values[col_start] + str(row_start + 1)
+            end_cell = list_maker.values[col_end - 1] + str(rect["min_row"])
+            merged_cell = start_cell + ":" + end_cell
+            merged_cell = CellRange(range_string=merged_cell)
+
+            out_map[count] = {
+                "text": "", "ranges": [(col_start, col_end + 1), (row_start, rect["min_row"] + 1)],
+                "merged_cell": merged_cell,
+                "info": {"is_EOS": True}
+            }
+
+        # footer
+        if rect["max_row"] < row_end:
+            excel_array[rect["max_row"]:row_end, col_start:col_end] = count
+            count += 1
+
+            start_cell = list_maker.values[col_start] + str(rect["max_row"] + 1)
+            end_cell = list_maker.values[col_end - 1] + str(row_end)
+            merged_cell = start_cell + ":" + end_cell
+            merged_cell = CellRange(range_string=merged_cell)
+
+            out_map[count] = {
+                "text": "", "ranges": [(col_start, col_end + 1), (rect["max_row"], row_end + 1)],
+                "merged_cell": merged_cell,
+                "info": {"is_EOS": True}
+            }
+
+        # lefter
+        if rect["min_col"] > 0:
+            excel_array[row_start:row_end, col_start:rect["min_col"]] = count
+            count += 1
+
+            start_cell = list_maker.values[col_start] + str(row_start + 1)
+            end_cell = list_maker.values[rect["min_col"] - 1] + str(row_end)
+            merged_cell = start_cell + ":" + end_cell
+            merged_cell = CellRange(range_string=merged_cell)
+
+            out_map[count] = {
+                "text": "", "ranges": [(col_start, rect["min_col"] + 1), (row_start, row_end + 1)],
+                "merged_cell": merged_cell,
+                "info": {"is_EOS": True}
+            }
+
+        # righter
+        if rect["max_col"] < col_end:
+            excel_array[row_start:row_end, rect["max_col"]:col_end] = count
+
+            start_cell = list_maker.values[rect["max_col"]] + str(row_start + 1)
+            end_cell = list_maker.values[col_end - 1] + str(row_end)
+            merged_cell = start_cell + ":" + end_cell
+            merged_cell = CellRange(range_string=merged_cell)
+
+            out_map[count] = {
+                "text": "", "ranges": [(rect["max_col"], col_end + 1), (row_start, row_end + 1)],
+                "merged_cell": merged_cell,
+                "info": {"is_EOS": True}
+            }
+
         if np.nansum(excel_array == 0) > 0:
             raise ValueError(
                 "No Zero must be included, "
                 f"but there is {np.nansum(excel_array == 0)} zeros in 'excel_array'")
 
-        cell_content: dict[int, str] = {
-            idx: contents["text"] for idx, contents in out_map.items()
-        }
         tree = CellTree.create_tree(excel_array,
                                     child_rate=self.child_rate,
-                                    cell_content=cell_content)
+                                    cell_content=out_map)
 
         for idx, outs in out_map.items():
             CellRangeModel.\
