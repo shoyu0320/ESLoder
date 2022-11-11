@@ -23,7 +23,7 @@ from excel import settings
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("", views.UploadExcelView.as_view(), name="index"),
-    path("excel_sheet/", include("upload_excel.urls")),
+    path("upload_excel/", include("upload_excel.urls")),
     path("download_excel/", include("download_excel.urls")),
 ]
 

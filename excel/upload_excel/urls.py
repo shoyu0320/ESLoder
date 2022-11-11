@@ -5,7 +5,7 @@ app_name = "upload_excel"
 urlpatterns = [
     path(
         "user=?<str:user_id>?",
-        views.UploadExcelView.as_view(), name="upload"
+        views.CellUploadView.as_view(), name="upload"
     ),
     path(
         "user=?<str:user_id>?/cell=?<int:cell_id>@<str:cell_uuid>?",

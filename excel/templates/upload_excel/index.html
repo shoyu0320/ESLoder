@@ -87,10 +87,10 @@
             <form action="" method="post" name="upload" enctype="multipart/form-data">
                 {{ upload.file }}<br>
                 {% csrf_token %}
-                <button name="btn_submit" type="file">アップロード</button>
+                <button name="btn_submit" type="file" value="{% url 'upload_excel:upload' excel_id %}">アップロード</button>
             </form>
             {% else %}
-            <p class="items">
+            <!-- <p class="items">
                 大項目
             </p>
             {% for coord, merged_cells in display.items %}
@@ -150,7 +150,7 @@
                         ダウンロード
                     </a>
                 </div>
-            </table>
+            </table> -->
             {% endif %}
         </h2>
         <h3>
