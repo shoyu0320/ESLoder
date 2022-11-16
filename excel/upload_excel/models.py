@@ -416,6 +416,7 @@ class ExcelSheetModel(models.Model):
                 "No Zero must be included, "
                 f"but there is {np.nansum(excel_array == 0)} zeros in 'excel_array'")
 
+        # ここでリサイズは完了してるので、横軸は最小公倍数をもとになんとか綺麗にする
         tree = CellTree.create_tree(excel_array,
                                     child_rate=self.child_rate,
                                     cell_content=out_map)
