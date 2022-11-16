@@ -7,6 +7,7 @@ _CellTree = TypeVar("_CellTree", bound="CellTree")
 _N = TypeVar("_N", bound=List[Union[int, "CellNode"]])
 
 titles = [
+    "スタッフＩＤ",
     "スペックシート", "ポートフォリオ",
     "スキル要約", "扱ったデータ・モデル",
     "アピールポイント", "資格",
@@ -52,7 +53,7 @@ class CellNode:
     def is_dev_experience(self) -> bool:
         flg = True
         flg &= self.has_top()
-        flg &= self.height > 1
+        flg &= self.height > 2
         flg &= len("".join([
             node.content for node in self.left_parents
         ])) == 0
@@ -76,6 +77,9 @@ class CellNode:
         flg &= self.include_title()
         flg &= len("".join([
             node.content for node in self.top_parents
+        ])) == 0
+        flg &= len("".join([
+            node.content for node in self.left_parents
         ])) == 0
         return flg
 

@@ -416,6 +416,7 @@ class ExcelSheetModel(models.Model):
                 "No Zero must be included, "
                 f"but there is {np.nansum(excel_array == 0)} zeros in 'excel_array'")
 
+        # ここでリサイズは完了してるので、横軸は最小公倍数をもとになんとか綺麗にする
         tree = CellTree.create_tree(excel_array,
                                     child_rate=self.child_rate,
                                     cell_content=out_map)
@@ -536,6 +537,7 @@ class CellRangeModel(models.Model):
         # an inputting parent model which has been defined
         # as foreign key model at child must be saved before.
         crm: _CRM = cls(excel_sheet=excel_sheet,
+                        cell_range_id=uuid.uuid4(),
                         cell_range_id_by_order=idx,
                         effective_cell_width=node.width,
                         effective_cell_height=node.height,
@@ -686,8 +688,8 @@ class ContentModel(models.Model):
     )
     cell_content: _F = models.TextField(
         verbose_name="セルの内容",
-        blank=False,
-        null=False,
+        blank=True,
+        null=True,
         default="",
         editable=True,
     )

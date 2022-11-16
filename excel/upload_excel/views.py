@@ -14,15 +14,17 @@ from upload_excel.utils.sort import A2ZListMaker
 _QS = TypeVar("_QS", bound=QuerySet)
 _CONTENT = TypeVar("_CONTENT", bound=Union[ColumnModel, ContentModel, RowModel])
 
+
 class UploadExcelView(TemplateView):
     form_class = UploadForm
     template_name = "upload_excel/index.html"
-    uploaded_template = "upload_excel/upload.html"
-    success_url = reverse_lazy("excel:upload")
+    uploaded_template = "upload_excel/index.html"
+    success_url = reverse_lazy("upload_excel:upload")
+    url_tmp: str = "upload_excel:upload"
 
     def _get_basic_context(self) -> dict[str, Any]:
         return {
-            "user_id": "3f5017be-a314-4bb2-92c0-5135b47f8c45"
+            "user_id": self.kwargs.get("user_id", "null")
         }
 
     def get_excel_col_size(self, excel_sheet_model: ExcelSheetModel) -> List[str]:
@@ -108,6 +110,8 @@ class UploadExcelView(TemplateView):
             esm: ExcelSheetModel = ExcelSheetModel.create_model(request, file_key="file", sheet_type="profile")
             context["display"] = self._make_display_context(esm)
             context["excel_id"] = esm.sheet_id
+            url = reverse_lazy(self.url_tmp, kwargs={"user_id": esm.sheet_id})
+            return redirect(url)
 
         return render(request, self.template_name, context=context)
 
@@ -117,13 +121,30 @@ class UploadExcelView(TemplateView):
         context: dict[str, Any] = self._get_basic_context()
         context["upload"] = self.form_class()
         context["display"] = None
+        context["excel_id"] = self.kwargs.get("excel_id", "before_upload")
+        print(self.kwargs)
         return render(request, self.template_name, context=context)
 
+
+
+class CellUploadView(UploadExcelView):
+    template_name:str = "upload_excel/upload.html"
+    success_url: str = reverse_lazy("upload_excel:upload")
+
+    def get(self, request: HttpRequest,
+            *args: Tuple[Any, ...],
+            **kwargs: dict[str, Any]) -> HttpResponse:
+        context: dict[str, Any] = self._get_basic_context()
+        user_id: str = self.kwargs["user_id"]
+        esm: ExcelSheetModel = ExcelSheetModel.objects.get(sheet_id=user_id)
+        context["excel_id"] = esm.sheet_id
+        context["display"] = self._make_display_context(esm)
+        return render(request, self.template_name, context=context)
 
 class CellUpdateView(UploadExcelView):
     form_class = ContentForm
     template_name: str = "upload_excel/update.html"
-    success_url: str = reverse_lazy("index")
+    success_url: str = reverse_lazy("upload_excel:upload")
 
     def _get_basic_context(self) -> dict[str, Any]:
         return {
@@ -171,7 +192,7 @@ class CellUpdateView(UploadExcelView):
             context["excel_id"] = esm.sheet_id
             context["display"] = self._make_display_context(esm)
 
-        return render(request, "upload_excel/index.html", context=context)
+        return render(request, "upload_excel/upload.html", context=context)
 
     def get(self, request: HttpRequest,
             *args: Tuple[Any, ...],
